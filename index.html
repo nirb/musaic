@@ -493,18 +493,27 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <script>
-        // Initialize Tone.js synth
+        // Initialize Tone.js synth with improved sound
         const synth = new Tone.PolySynth(Tone.Synth, {
             oscillator: {
-                type: 'sine'
+                type: 'triangle',
+                partials: [1, 2, 3]
             },
             envelope: {
-                attack: 0.005,
-                decay: 0.1,
-                sustain: 0.3,
-                release: 1
+                attack: 0.01,
+                decay: 0.15,
+                sustain: 0.2,
+                release: 0.8
             }
         }).toDestination();
+
+        // Add reverb for a warmer, more natural sound
+        const reverb = new Tone.Reverb({
+            decay: 2.5,
+            preDelay: 0.01
+        }).connect(Tone.Destination);
+
+        synth.connect(reverb);
 
         // Range F1 to C7 (Places Middle C slightly left of center)
         const notes = [];
@@ -1320,7 +1329,7 @@
             return result;
         }
 
-        // Auto load last song
+        // Auto load last song or default example song for new users
         const lastSong = localStorage.getItem('musaic_last_song');
         if (lastSong) {
             const songs = JSON.parse(localStorage.getItem('musaic_songs') || '{}');
@@ -1328,6 +1337,10 @@
                 savedSongsSelect.value = lastSong;
                 loadSong();
             }
+        } else {
+            // For new users, auto-load the example song
+            savedSongsSelect.value = 'Perfect Day Example';
+            loadSong();
         }
 
         // Auto load last rhythm
