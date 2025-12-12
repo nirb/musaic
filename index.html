@@ -515,6 +515,26 @@
 
         synth.connect(reverb);
 
+        // Warm up the audio context on load
+        let audioWarmedUp = false;
+        async function warmupAudio() {
+            if (audioWarmedUp) return;
+            try {
+                if (Tone.context.state !== 'running') {
+                    await Tone.start();
+                }
+                // Play a silent note to warm up the synth
+                synth.volume.value = -Infinity;
+                synth.triggerAttackRelease('C4', '16n');
+                setTimeout(() => {
+                    synth.volume.value = 0;
+                    audioWarmedUp = true;
+                }, 100);
+            } catch (e) {
+                console.log('Audio warmup in progress');
+            }
+        }
+
         // Range F1 to C7 (Places Middle C slightly left of center)
         const notes = [];
         const startOctave = 1;
@@ -1044,6 +1064,9 @@
                 Tone.start();
             }
 
+            // Ensure audio is warmed up
+            warmupAudio();
+
             const speed = parseFloat(document.getElementById('speedRange').value);
             Tone.Transport.bpm.value = 120 * speed;
 
@@ -1360,6 +1383,13 @@
         // Start audio context on user interaction
         document.addEventListener('click', async () => {
             await Tone.start();
+            warmupAudio();
+        }, { once: true });
+
+        // Also try to warmup on touch for mobile
+        document.addEventListener('touchstart', async () => {
+            await Tone.start();
+            warmupAudio();
         }, { once: true });
 
         // Speed Control
