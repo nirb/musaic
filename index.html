@@ -25,6 +25,8 @@
             padding: 20px;
             width: 100%;
             max-width: 95vw;
+            display: flex;
+            flex-direction: column;
         }
 
         h1 {
@@ -106,8 +108,8 @@
             display: flex;
             width: 100%;
             gap: 20px;
-            margin-bottom: 40px;
             height: 300px;
+            order: 2;
         }
 
         @media (max-width: 768px) {
@@ -116,6 +118,7 @@
                 gap: 15px;
                 height: auto;
                 margin-bottom: 20px;
+                order: 3;
             }
         }
 
@@ -269,12 +272,14 @@
             border-radius: 10px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             position: relative;
+            order: 1;
         }
 
         @media (max-width: 768px) {
             .piano {
                 padding: 10px;
                 margin-bottom: 10px;
+                order: 2;
             }
         }
 
@@ -282,6 +287,16 @@
             display: flex;
             position: relative;
             flex-grow: var(--keys);
+        }
+
+        @media (max-width: 768px) {
+            .octave[data-octave="1"],
+            .octave[data-octave="2"],
+            .octave[data-octave="5"],
+            .octave[data-octave="6"],
+            .octave[data-octave="7"] {
+                display: none;
+            }
         }
 
         .white-key {
@@ -487,11 +502,7 @@
                 <!-- Chords will be generated here -->
             </div>
         </div>
-
         <div class="piano" id="piano"></div>
-        <div class="instructions">
-            Click or tap the keys to play notes • Range F1-C7
-        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
