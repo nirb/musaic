@@ -75,6 +75,11 @@
             }
         }
 
+        .speed-range {
+            width: 120px;
+            cursor: pointer;
+        }
+
         #songTitle {
         }
 
@@ -466,9 +471,7 @@
             </div>
             <div>
                 <div class="control-label">Play Speed <span id="speedLabel" style="font-weight: normal;">(1.0)</span></div>
-                <div style="height: 39px; background: white; padding: 12px 8px; border-radius: 5px; display: inline-block;">
-                    <input type="range" id="speedRange" min="0.5" max="1" step="0.05" value="1" style="width: 120px; padding: 0; cursor: pointer;">
-                </div>
+                <input type="range" id="speedRange" class="speed-range" min="0.5" max="1" step="0.05" value="1">
             </div>
         </div>
         <div class="controls-group">
