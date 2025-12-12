@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piano Keyboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .container {
+            text-align: center;
+            padding: 20px;
+            width: 100%;
+            max-width: 95vw;
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .controls {
+            display: flex;
+            gap: 40px;
+            margin-bottom: 20px;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .controls-group {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .control-label {
+            color: white;
+            font-size: 12px;
+            margin-bottom: 5px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            text-align: left;
+        }
+
+        .controls input, .controls select, .controls button {
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            font-size: 16px;
+        }
+
+        #songTitle {
+        }
+
+        .controls button {
+            background-color: #2c3e50;
+            color: white;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .controls button:hover {
+            background-color: #34495e;
+        }
+
+        .controls button.delete-btn {
+            background-color: #c0392b;
+        }
+
+        .controls button.delete-btn:hover {
+            background-color: #e74c3c;
+        }
+
+        .editor-wrapper {
+            display: flex;
+            width: 100%;
+            gap: 20px;
+            margin-bottom: 40px;
+            height: 300px;
+        }
+
+        .notebook-paper {
+            flex: 1;
+            height: 100%;
+            padding: 30px 5ch; /* 5 chars padding as requested */
+            font-size: 18px;
+            line-height: 60px; /* Increased line height to prevent chord overlap */
+            border: none;
+            border-radius: 4px;
+            background-color: #fff;
+            background-image: linear-gradient(transparent 59px, #e1e1e1 60px);
+            background-size: 100% 60px;
+            background-attachment: local;
+            color: #444;
+            outline: none;
+            font-family: 'Courier New', Courier, monospace;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            white-space: pre-wrap;
+            text-align: left;
+        }
+
+        .notebook-paper:empty:before {
+            content: attr(placeholder);
+            color: #aaa;
+        }
+
+        .notebook-paper::selection, .notebook-paper *::selection {
+            background: rgba(241, 196, 15, 0.5);
+        }
+
+        .chord-palette {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-content: flex-start;
+        }
+
+        .chord-item {
+            background: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: grab;
+            font-weight: bold;
+            color: #2c3e50;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            user-select: none;
+            height: fit-content;
+        }
+
+        .chord-item:active {
+            cursor: grabbing;
+        }
+
+        .chord-span {
+            position: relative;
+            display: inline-block; /* Changed to inline-block to better contain the absolute label */
+        }
+
+        .chord-label {
+            position: absolute;
+            top: -0.4em;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #f1c40f;
+            color: #000;
+            padding: 0 4px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            line-height: 1.2;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            z-index: 10;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .chord-label:active {
+            cursor: grabbing;
+        }
+
+        .chord-playing .chord-label {
+            background: #27ae60;
+            color: white;
+            transform: translateX(-50%) scale(1.2);
+            z-index: 20;
+        }
+
+        @keyframes flyOut {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -150%) scale(0.5); opacity: 0; }
+        }
+
+        .notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(39, 174, 96, 0.9);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 50px;
+            font-size: 24px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 1000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            animation: flyOut 1.5s ease-in-out forwards;
+        }
+
+        .piano {
+            display: flex;
+            width: 100%;
+            background: #2c3e50;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .octave {
+            display: flex;
+            position: relative;
+            flex-grow: var(--keys);
+        }
+
+        .white-key {
+            width: calc(100% / var(--keys));
+            height: 125px;
+            background: white;
+            border: 1px solid #333;
+            border-radius: 0 0 5px 5px;
+            cursor: pointer;
+            transition: all 0.1s;
+            position: relative;
+            z-index: 1;
+        }
+
+        .white-key:hover {
+            background: #f0f0f0;
+        }
+
+        .white-key:active,
+        .white-key.active {
+            background: #e0e0e0;
+            transform: translateY(2px);
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .white-key.guide {
+            background: #a8e6cf;
+        }
+
+        .black-key {
+            width: calc((100% / var(--keys)) * 0.6);
+            height: 75px;
+            background: linear-gradient(180deg, #1a1a1a 0%, #000 100%);
+            border: 1px solid #000;
+            border-radius: 0 0 3px 3px;
+            cursor: pointer;
+            position: absolute;
+            z-index: 2;
+            transition: all 0.1s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            transform: translateX(-50%);
+            left: calc((100% / var(--keys)) * var(--pos));
+        }
+
+        .black-key:hover {
+            background: linear-gradient(180deg, #2a2a2a 0%, #111 100%);
+        }
+
+        .black-key:active,
+        .black-key.active {
+            background: #444;
+            transform: translateY(2px) translateX(-50%);
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+        }
+
+        .black-key.guide {
+            background: #16a085;
+        }
+
+        .note-label {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #666;
+            pointer-events: none;
+        }
+
+        .black-key .note-label {
+            color: #999;
+            bottom: 5px;
+            font-size: 10px;
+        }
+
+        .instructions {
+            color: white;
+            margin-top: 20px;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        @media (max-width: 768px) {
+            .white-key {
+                width: 40px;
+                height: 180px;
+            }
+            .black-key {
+                width: 28px;
+                height: 110px;
+            }
+            .black-key-1 { left: 28px; }
+            .black-key-2 { left: 68px; }
+            .black-key-3 { left: 148px; }
+            .black-key-4 { left: 188px; }
+            .black-key-5 { left: 228px; }
+            h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎹 Interactive Piano</h1>
+        <div class="controls">
+            <div class="controls-group">
+                <div>
+                    <div class="control-label">Song Name</div>
+                    <input type="text" id="songTitle" placeholder="Song Title">
+                </div>
+                <div>
+                    <div class="control-label">Selected Song</div>
+                    <select id="savedSongs" onchange="loadSong()">
+                        <option value="">Select a song...</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="control-label">Rhythm</div>
+                    <select id="rhythmSelect">
+                    <option value="block">1. Block Chords</option>
+                    <option value="pulse">2. Pulse (4/4)</option>
+                    <option value="pop">3. Pop (Bass-Chord)</option>
+                    <option value="waltz">4. Waltz Style</option>
+                    <option value="broken">5. Broken Chords</option>
+                    <option value="arp_up">6. Arpeggio Up (1-3-5-8)</option>
+                    <option value="arp_down">7. Arpeggio Down (1-8-5-3)</option>
+                    <option value="alberti">8. Alberti Bass</option>
+                    <option value="ballad">9. Ballad (1-5-8-3)</option>
+                    <option value="stride">10. Stride Piano</option>
+                    <option value="rock">11. Rock (8th notes)</option>
+                </select>
+            </div>
+            <div>
+                <div class="control-label">Play Speed <span id="speedLabel" style="font-weight: normal;">(1.0)</span></div>
+                <div style="height: 39px; background: white; padding: 12px 8px; border-radius: 5px; display: inline-block;">
+                    <input type="range" id="speedRange" min="0.5" max="1" step="0.05" value="1" style="width: 120px; padding: 0; cursor: pointer;">
+                </div>
+            </div>
+        </div>
+        <div class="controls-group">
+                <button onclick="saveSong()">Save changes</button>
+                <button onclick="deleteSong()" class="delete-btn">Delete Song</button>
+                <button onclick="togglePlay()" id="playBtn" style="background-color: #27ae60; min-width: 100px;">Play</button>
+            </div>
+        </div>
+        
+        <div class="editor-wrapper">
+            <div class="notebook-paper" id="lyrics" contenteditable="true" placeholder="Write your song lyrics here... (Drag chords from the right)"></div>
+            <div class="chord-palette" id="chordPalette">
+                <!-- Chords will be generated here -->
+            </div>
+        </div>
+
+        <div class="piano" id="piano"></div>
+        <div class="instructions">
+            Click or tap the keys to play notes • Range F1-C7
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script>
+        // Initialize Tone.js synth
+        const synth = new Tone.PolySynth(Tone.Synth, {
+            oscillator: {
+                type: 'sine'
+            },
+            envelope: {
+                attack: 0.005,
+                decay: 0.1,
+                sustain: 0.3,
+                release: 1
+            }
+        }).toDestination();
+
+        // Range F1 to C7 (Places Middle C slightly left of center)
+        const notes = [];
+        const startOctave = 1;
+        const endOctave = 7;
+        const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        
+        // Generate notes from F1 to C7
+        for (let octave = startOctave; octave <= endOctave; octave++) {
+            for (let i = 0; i < noteNames.length; i++) {
+                const note = noteNames[i] + octave;
+                // Start at F1
+                if (octave === startOctave && i < noteNames.indexOf('F')) continue;
+                // End at C7
+                if (octave === endOctave && i > 0) continue;
+                notes.push(note);
+            }
+        }
+
+        const piano = document.getElementById('piano');
+        
+        // Create piano keys
+        function createPiano() {
+            let currentOctave = null;
+            let octaveDiv = null;
+            let whiteKeyIndex = 0;
+            
+            notes.forEach((note, index) => {
+                const noteName = note.slice(0, -1);
+                const octaveNumber = parseInt(note.slice(-1));
+                const isBlack = noteName.includes('#');
+                
+                if (currentOctave !== octaveNumber) {
+                    currentOctave = octaveNumber;
+                    whiteKeyIndex = 0;
+                    
+                    octaveDiv = document.createElement('div');
+                    octaveDiv.className = 'octave';
+                    octaveDiv.dataset.octave = octaveNumber;
+                    
+                    let keysInOctave = 7;
+                    if (octaveNumber === startOctave) keysInOctave = 4; // F, G, A, B
+                    if (octaveNumber === endOctave) keysInOctave = 1; // C
+
+                    octaveDiv.style.setProperty('--keys', keysInOctave);
+                    piano.appendChild(octaveDiv);
+                }
+                
+                const key = document.createElement('div');
+                key.className = isBlack ? 'black-key' : 'white-key';
+                key.dataset.note = note;
+                
+                // Add note label
+                const label = document.createElement('span');
+                label.className = 'note-label';
+                label.textContent = note;
+                key.appendChild(label);
+                
+                if (!isBlack) {
+                    whiteKeyIndex++;
+                } else {
+                    key.style.setProperty('--pos', whiteKeyIndex);
+                }
+                
+                // Event listeners
+                key.addEventListener('mousedown', () => playNote(note, key));
+                key.addEventListener('mouseup', () => stopNote(key));
+                key.addEventListener('mouseleave', () => stopNote(key));
+                
+                key.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    playNote(note, key);
+                });
+                key.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    stopNote(key);
+                });
+                
+                octaveDiv.appendChild(key);
+            });
+        }
+
+        function playNote(note, keyElement) {
+            if (!keyElement.classList.contains('active')) {
+                keyElement.classList.add('active');
+                synth.triggerAttack(note);
+            }
+        }
+
+        function stopNote(keyElement) {
+            if (keyElement.classList.contains('active')) {
+                keyElement.classList.remove('active');
+                const note = keyElement.dataset.note;
+                synth.triggerRelease(note);
+            }
+        }
+
+        // Keyboard mapping for computer keyboard
+        const keyMap = {
+            'a': 'C4', 'w': 'C#4', 's': 'D4', 'e': 'D#4', 'd': 'E4',
+            'f': 'F4', 't': 'F#4', 'g': 'G4', 'y': 'G#4', 'h': 'A4',
+            'u': 'A#4', 'j': 'B4', 'k': 'C5', 'o': 'C#5', 'l': 'D5',
+            'p': 'D#5', ';': 'E5', "'": 'F5'
+        };
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.isContentEditable) return;
+
+            const note = keyMap[e.key.toLowerCase()];
+            if (note && !e.repeat) {
+                const keyElement = document.querySelector(`[data-note="${note}"]`);
+                if (keyElement) {
+                    playNote(note, keyElement);
+                }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            const note = keyMap[e.key.toLowerCase()];
+            if (note) {
+                const keyElement = document.querySelector(`[data-note="${note}"]`);
+                if (keyElement) {
+                    stopNote(keyElement);
+                }
+            }
+        });
+
+        // Song Management
+        const songTitleInput = document.getElementById('songTitle');
+        const lyricsInput = document.getElementById('lyrics');
+        const savedSongsSelect = document.getElementById('savedSongs');
+        const chordPalette = document.getElementById('chordPalette');
+        let draggedChordSpan = null;
+
+        // Generate Chord Palette
+        const commonChords = [
+            'C', 'Cm', 'C7',
+            'D', 'Dm', 'D7',
+            'E', 'Em', 'E7',
+            'F', 'Fm', 'F7',
+            'G', 'Gm', 'G7',
+            'A', 'Am', 'A7',
+            'B', 'Bm', 'B7',
+            'C#', 'C#m', 'Eb', 'F#', 'G#', 'Bb'
+        ];
+
+        commonChords.forEach(chord => {
+            const div = document.createElement('div');
+            div.className = 'chord-item';
+            div.textContent = chord;
+            div.draggable = true;
+            div.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', chord);
+            });
+            chordPalette.appendChild(div);
+        });
+
+        // Handle Drop on Palette (Remove Chord)
+        chordPalette.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (draggedChordSpan) {
+                e.dataTransfer.dropEffect = 'move';
+            }
+        });
+
+        chordPalette.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (draggedChordSpan) {
+                const parent = draggedChordSpan.parentNode;
+                // Move text nodes out
+                const children = Array.from(draggedChordSpan.childNodes);
+                children.forEach(child => {
+                    if (child.nodeType === Node.TEXT_NODE) {
+                        parent.insertBefore(child, draggedChordSpan);
+                    }
+                });
+                parent.removeChild(draggedChordSpan);
+                draggedChordSpan = null;
+                lyricsInput.normalize();
+            }
+        });
+
+        // Handle Drop on Lyrics
+        lyricsInput.addEventListener('dragover', (e) => {
+            e.preventDefault(); // Allow dropping
+            e.dataTransfer.dropEffect = 'copy';
+            if (draggedChordSpan) {
+                e.dataTransfer.dropEffect = 'move';
+            }
+            
+            // Highlight logic
+            let range;
+            if (document.caretRangeFromPoint) {
+                range = document.caretRangeFromPoint(e.clientX, e.clientY);
+            } else if (e.rangeParent) {
+                range = document.createRange();
+                range.setStart(e.rangeParent, e.rangeOffset);
+            }
+
+            if (range && range.startContainer.nodeType === Node.TEXT_NODE) {
+                const textNode = range.startContainer;
+                const offset = range.startOffset;
+                const sel = window.getSelection();
+                
+                // Check if we are inserting before/after or wrapping
+                let isInsertion = false;
+                let targetOffset = offset;
+                let overChar = false;
+                
+                if (offset < textNode.textContent.length) {
+                    const charRange = document.createRange();
+                    charRange.setStart(textNode, offset);
+                    charRange.setEnd(textNode, offset + 1);
+                    const rect = charRange.getBoundingClientRect();
+                    
+                    if (e.clientX >= rect.left && e.clientX <= rect.right) {
+                        overChar = true;
+                        targetOffset = offset;
+                    }
+                } 
+                
+                if (!overChar && offset > 0) {
+                    const charRange = document.createRange();
+                    charRange.setStart(textNode, offset - 1);
+                    charRange.setEnd(textNode, offset);
+                    const rect = charRange.getBoundingClientRect();
+                    
+                    if (e.clientX >= rect.left && e.clientX <= rect.right) {
+                        overChar = true;
+                        targetOffset = offset - 1;
+                    }
+                }
+
+                if (!overChar) {
+                    isInsertion = true;
+                }
+
+                if (isInsertion) {
+                    // Show caret
+                    const caretRange = document.createRange();
+                    caretRange.setStart(textNode, offset);
+                    caretRange.setEnd(textNode, offset);
+                    sel.removeAllRanges();
+                    sel.addRange(caretRange);
+                } else {
+                    // Highlight character
+                    const highlightRange = document.createRange();
+                    highlightRange.setStart(textNode, targetOffset);
+                    highlightRange.setEnd(textNode, targetOffset + 1);
+                    sel.removeAllRanges();
+                    sel.addRange(highlightRange);
+                }
+            }
+        });
+
+        // Handle dragging existing chords
+        lyricsInput.addEventListener('dragstart', (e) => {
+            if (e.target.classList.contains('chord-label')) {
+                const span = e.target.parentElement;
+                if (span && span.classList.contains('chord-span')) {
+                    draggedChordSpan = span;
+                    e.dataTransfer.setData('text/plain', span.dataset.chord);
+                    e.dataTransfer.effectAllowed = 'move';
+                }
+            }
+        });
+
+        lyricsInput.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const chord = e.dataTransfer.getData('text/plain');
+            if (!chord) return;
+
+            // Get caret position from drop
+            let range;
+            if (document.caretRangeFromPoint) {
+                range = document.caretRangeFromPoint(e.clientX, e.clientY);
+            } else if (e.rangeParent) {
+                range = document.createRange();
+                range.setStart(e.rangeParent, e.rangeOffset);
+            }
+
+            if (range) {
+                // Prevent dropping inside the dragged element itself
+                if (draggedChordSpan && draggedChordSpan.contains(range.startContainer)) {
+                    return;
+                }
+
+                // Select the drop target
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+
+                // Create the chord span structure
+                const createChordSpan = (char, chordName) => {
+                    const span = document.createElement('span');
+                    span.className = 'chord-span';
+                    span.dataset.chord = chordName;
+                    span.textContent = char;
+                    
+                    const label = document.createElement('span');
+                    label.className = 'chord-label';
+                    label.contentEditable = 'false';
+                    label.draggable = true;
+                    label.textContent = chordName;
+                    
+                    span.appendChild(label);
+                    return span;
+                };
+
+                // Check if we are dropping on an existing text node
+                if (range.startContainer.nodeType === Node.TEXT_NODE) {
+                    const textNode = range.startContainer;
+                    const offset = range.startOffset;
+                    const textContent = textNode.textContent;
+                    
+                    let isInsertion = false;
+                    let targetOffset = offset;
+                    let overChar = false;
+
+                    if (offset < textContent.length) {
+                        const charRange = document.createRange();
+                        charRange.setStart(textNode, offset);
+                        charRange.setEnd(textNode, offset + 1);
+                        const rect = charRange.getBoundingClientRect();
+                        if (e.clientX >= rect.left && e.clientX <= rect.right) {
+                            overChar = true;
+                            targetOffset = offset;
+                        }
+                    }
+
+                    if (!overChar && offset > 0) {
+                        const charRange = document.createRange();
+                        charRange.setStart(textNode, offset - 1);
+                        charRange.setEnd(textNode, offset);
+                        const rect = charRange.getBoundingClientRect();
+                        if (e.clientX >= rect.left && e.clientX <= rect.right) {
+                            overChar = true;
+                            targetOffset = offset - 1;
+                        }
+                    }
+
+                    if (!overChar) {
+                        isInsertion = true;
+                    }
+
+                    let span;
+                    if (isInsertion) {
+                        // Insert with non-breaking space
+                        span = createChordSpan('\u00A0', chord);
+                        range.insertNode(span);
+                    } else {
+                        // Wrap character
+                        const charToWrap = textContent[targetOffset];
+                        span = createChordSpan(charToWrap, chord);
+                        
+                        range.setStart(textNode, targetOffset);
+                        range.setEnd(textNode, targetOffset + 1);
+                        range.deleteContents();
+                        range.insertNode(span);
+                    }
+                    
+                    // If this was a move operation, remove the old chord
+                    if (draggedChordSpan && draggedChordSpan !== span) {
+                        const parent = draggedChordSpan.parentNode;
+                        // Move text nodes out
+                        const children = Array.from(draggedChordSpan.childNodes);
+                        children.forEach(child => {
+                            if (child.nodeType === Node.TEXT_NODE) {
+                                parent.insertBefore(child, draggedChordSpan);
+                            }
+                        });
+                        parent.removeChild(draggedChordSpan);
+                        draggedChordSpan = null;
+                    }
+
+                    lyricsInput.normalize();
+                } else {
+                    // Dropped in empty space
+                    const span = createChordSpan('\u00A0', chord);
+                    range.insertNode(span);
+                    
+                    if (draggedChordSpan && draggedChordSpan !== span) {
+                        const parent = draggedChordSpan.parentNode;
+                        const children = Array.from(draggedChordSpan.childNodes);
+                        children.forEach(child => {
+                            if (child.nodeType === Node.TEXT_NODE) {
+                                parent.insertBefore(child, draggedChordSpan);
+                            }
+                        });
+                        parent.removeChild(draggedChordSpan);
+                        draggedChordSpan = null;
+                    }
+                }
+            }
+        });
+
+        function saveSong() {
+            const title = songTitleInput.value.trim();
+            const lyrics = lyricsInput.innerHTML; // Save HTML to preserve chords
+            
+            if (!title) {
+                alert('Please enter a song title');
+                return;
+            }
+
+            const songs = JSON.parse(localStorage.getItem('musaic_songs') || '{}');
+            songs[title] = { title, lyrics, date: new Date().toISOString() };
+            localStorage.setItem('musaic_songs', JSON.stringify(songs));
+            localStorage.setItem('musaic_last_song', title);
+            
+            updateSongList();
+            showNotification('Song Saved! 🎵');
+        }
+
+        function showNotification(text) {
+            const el = document.createElement('div');
+            el.className = 'notification';
+            el.textContent = text;
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 1500);
+        }
+
+        function loadSong() {
+            const title = savedSongsSelect.value;
+            if (!title) return;
+
+            const songs = JSON.parse(localStorage.getItem('musaic_songs') || '{}');
+            const song = songs[title];
+            
+            if (song) {
+                songTitleInput.value = song.title;
+                lyricsInput.innerHTML = song.lyrics; // Load HTML
+                localStorage.setItem('musaic_last_song', title);
+            }
+        }
+
+        function deleteSong() {
+            const title = savedSongsSelect.value;
+            if (!title) return;
+
+            if (confirm(`Are you sure you want to delete "${title}"?`)) {
+                const songs = JSON.parse(localStorage.getItem('musaic_songs') || '{}');
+                delete songs[title];
+                localStorage.setItem('musaic_songs', JSON.stringify(songs));
+                
+                if (localStorage.getItem('musaic_last_song') === title) {
+                    localStorage.removeItem('musaic_last_song');
+                }
+
+                updateSongList();
+                songTitleInput.value = '';
+                lyricsInput.innerHTML = '';
+            }
+        }
+
+        function updateSongList() {
+            const songs = JSON.parse(localStorage.getItem('musaic_songs') || '{}');
+            savedSongsSelect.innerHTML = '<option value="">Select a song...</option>';
+            
+            Object.keys(songs).sort().forEach(title => {
+                const option = document.createElement('option');
+                option.value = title;
+                option.textContent = title;
+                savedSongsSelect.appendChild(option);
+            });
+        }
+
+        // Initialize song list
+        updateSongList();
+
+        // Playback Logic
+        let isPlaying = false;
+        let currentChordIndex = 0;
+        let playInterval;
+        let activeTimeouts = [];
+
+        function togglePlay() {
+            if (isPlaying) {
+                stopPlaying();
+            } else {
+                startPlaying();
+            }
+        }
+
+        function startPlaying() {
+            const chordSpans = document.querySelectorAll('.chord-span');
+            if (chordSpans.length === 0) {
+                alert('No chords to play!');
+                return;
+            }
+            
+            // Start Audio Context if needed
+            if (Tone.context.state !== 'running') {
+                Tone.start();
+            }
+
+            const speed = parseFloat(document.getElementById('speedRange').value);
+            Tone.Transport.bpm.value = 120 * speed;
+
+            isPlaying = true;
+            const playBtn = document.getElementById('playBtn');
+            playBtn.textContent = 'Stop';
+            playBtn.style.backgroundColor = '#e74c3c';
+            
+            currentChordIndex = 0;
+            playNextChord();
+        }
+
+        function stopPlaying() {
+            isPlaying = false;
+            const playBtn = document.getElementById('playBtn');
+            playBtn.textContent = 'Play';
+            playBtn.style.backgroundColor = '#27ae60';
+            
+            clearTimeout(playInterval);
+            
+            // Clear rhythm timeouts
+            activeTimeouts.forEach(id => clearTimeout(id));
+            activeTimeouts = [];
+
+            clearGuides();
+            
+            // Release all notes
+            synth.releaseAll();
+        }
+
+        function clearGuides() {
+            document.querySelectorAll('.guide').forEach(k => {
+                k.classList.remove('guide');
+                if (k.dataset.removeTimeout) {
+                    clearTimeout(parseInt(k.dataset.removeTimeout));
+                    delete k.dataset.removeTimeout;
+                }
+            });
+            document.querySelectorAll('.chord-playing').forEach(s => s.classList.remove('chord-playing'));
+        }
+
+        function smoothScrollTo(element, target, duration) {
+            const start = element.scrollTop;
+            const change = target - start;
+            const startTime = performance.now();
+
+            function animateScroll(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Ease-in-out quadratic
+                const ease = progress < 0.5 
+                    ? 2 * progress * progress 
+                    : -1 + (4 - 2 * progress) * progress;
+
+                element.scrollTop = start + (change * ease);
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateScroll);
+                }
+            }
+
+            requestAnimationFrame(animateScroll);
+        }
+
+        function playNextChord() {
+            if (!isPlaying) return;
+            
+            const chordSpans = document.querySelectorAll('.chord-span');
+            if (currentChordIndex >= chordSpans.length) {
+                stopPlaying();
+                return;
+            }
+            
+            const span = chordSpans[currentChordIndex];
+            const chordName = span.dataset.chord;
+            
+            // Highlight the chord text
+            clearGuides();
+            span.classList.add('chord-playing');
+            
+            // Auto-scroll to show the chord
+            const container = document.getElementById('lyrics');
+            const spanRect = span.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            const targetTop = (container.clientHeight - spanRect.height) / 2;
+            const diff = (spanRect.top - containerRect.top) - targetTop;
+
+            if (Math.abs(diff) > 20) {
+                smoothScrollTo(container, container.scrollTop + diff, 800);
+            }
+            
+            // Play and Highlight Keys
+            playChord(chordName);
+            
+            currentChordIndex++;
+            const speed = parseFloat(document.getElementById('speedRange').value);
+            playInterval = setTimeout(playNextChord, 2000 / speed);
+        }
+
+        function playChord(chordName) {
+            const notes = getNotesForChord(chordName);
+            if (notes.length === 0) return;
+
+            console.log('Playing chord:', chordName, notes);
+
+            // Note: Highlighting is now handled inside playNoteAt to sync with rhythm
+
+            const rhythm = document.getElementById('rhythmSelect').value;
+            const speed = parseFloat(document.getElementById('speedRange').value);
+            const duration = 2000 / speed; 
+            const beat = duration / 4; 
+
+            if (rhythm === 'block') {
+                // synth.triggerAttackRelease(notes, '1n'); // Removed direct call
+                playNoteAt(notes, 0, '1n');
+            } else if (rhythm === 'pulse') {
+                // 4 quarter notes
+                playNoteAt(notes, 0, '4n');
+                playNoteAt(notes, beat, '4n');
+                playNoteAt(notes, beat * 2, '4n');
+                playNoteAt(notes, beat * 3, '4n');
+            } else if (rhythm === 'pop') {
+                // Bass - Chord - Bass - Chord
+                const chordNotes = notes.slice(1);
+                playNoteAt(notes[0], 0, '4n');
+                playNoteAt(chordNotes, beat, '4n');
+                playNoteAt(notes[0], beat * 2, '4n');
+                playNoteAt(chordNotes, beat * 3, '4n');
+            } else if (rhythm === 'waltz') {
+                // Bass - Chord - Chord - Chord
+                const chordNotes = notes.slice(1);
+                playNoteAt(notes[0], 0, '4n');
+                playNoteAt(chordNotes, beat, '4n');
+                playNoteAt(chordNotes, beat * 2, '4n');
+                playNoteAt(chordNotes, beat * 3, '4n');
+            } else if (rhythm === 'broken') {
+                // 1 - 3 - 5 - 3
+                playNoteAt(notes[0], 0, '4n');
+                playNoteAt(notes[1] || notes[0], beat, '4n');
+                playNoteAt(notes[2] || notes[1] || notes[0], beat * 2, '4n');
+                playNoteAt(notes[1] || notes[0], beat * 3, '4n');
+            } else if (rhythm === 'arp_up') {
+                // 1 - 3 - 5 - 8
+                playNoteAt(notes[0], 0, '4n');
+                playNoteAt(notes[1] || notes[0], beat, '4n');
+                playNoteAt(notes[2] || notes[1] || notes[0], beat * 2, '4n');
+                
+                const root = notes[0];
+                // Calculate octave up for the last note
+                // notes[0] is bass (e.g. C3). We want C4.
+                // Actually notes[1] is C4 (Treble Root).
+                // So we can just use notes[1] if available, or calculate.
+                // Let's use the treble root (notes[1]) as the "8" if we consider bass as 1.
+                // Or if we want 1-3-5-8 of the treble chord...
+                // Let's stick to the notes array: Bass, Treble1, Treble2, Treble3
+                // Arp up: Bass -> Treble1 -> Treble2 -> Treble3
+                if (notes[3]) playNoteAt(notes[3], beat * 3, '4n');
+                else playNoteAt(notes[1], beat * 3, '4n');
+            } else if (rhythm === 'arp_down') {
+                // 1 - 8 - 5 - 3
+                playNoteAt(notes[0], 0, '4n'); // Bass
+                playNoteAt(notes[3], beat, '4n'); // Octave (Root)
+                playNoteAt(notes[2], beat * 2, '4n'); // 5th
+                playNoteAt(notes[1], beat * 3, '4n'); // 3rd
+            } else if (rhythm === 'alberti') {
+                // 1 - 5 - 3 - 5 (using treble notes mostly)
+                // Bass -> Treble3 -> Treble2 -> Treble3
+                playNoteAt(notes[0], 0, '4n');
+                playNoteAt(notes[3] || notes[2], beat, '4n');
+                playNoteAt(notes[2] || notes[1], beat * 2, '4n');
+                playNoteAt(notes[3] || notes[2], beat * 3, '4n');
+            } else if (rhythm === 'ballad') {
+                // 1 - 5 - 8 - 3
+                playNoteAt(notes[0], 0, '4n');
+                playNoteAt(notes[3] || notes[2], beat, '4n'); // 5th
+                playNoteAt(notes[1], beat * 2, '4n'); // Root (Treble) as 8
+                playNoteAt(notes[2], beat * 3, '4n'); // 3rd
+            } else if (rhythm === 'stride') {
+                // Root - Chord - 5th - Chord
+                const chordNotes = notes.slice(1);
+                playNoteAt(notes[0], 0, '4n');
+                playNoteAt(chordNotes, beat, '4n');
+                // 5th in bass? Hard to calc without logic, let's use Treble 5th or just Bass again
+                playNoteAt(notes[0], beat * 2, '4n'); 
+                playNoteAt(chordNotes, beat * 3, '4n');
+            } else if (rhythm === 'rock') {
+                // 8th notes: Bass - Chord - Bass - Chord...
+                const chordNotes = notes.slice(1);
+                const halfBeat = beat / 2;
+                for(let i=0; i<8; i++) {
+                    if (i % 2 === 0) playNoteAt(notes[0], i * halfBeat, '8n');
+                    else playNoteAt(chordNotes, i * halfBeat, '8n');
+                }
+            }
+        }
+
+        function playNoteAt(noteOrNotes, delay, length) {
+            const id = setTimeout(() => {
+                if (isPlaying) {
+                    synth.triggerAttackRelease(noteOrNotes, length);
+
+                    // Visuals
+                    const notes = Array.isArray(noteOrNotes) ? noteOrNotes : [noteOrNotes];
+                    const speed = parseFloat(document.getElementById('speedRange').value);
+
+                    notes.forEach(note => {
+                        const key = document.querySelector(`[data-note="${note}"]`);
+                        if (key) {
+                            // Clear previous timeout if exists
+                            if (key.dataset.removeTimeout) {
+                                clearTimeout(parseInt(key.dataset.removeTimeout));
+                                delete key.dataset.removeTimeout;
+                            }
+
+                            key.classList.add('guide');
+                            
+                            // Calculate duration in ms
+                            let durationMs = 500;
+                            if (length === '1n') durationMs = 2000;
+                            if (length === '2n') durationMs = 1000;
+                            if (length === '4n') durationMs = 500;
+                            if (length === '8n') durationMs = 250;
+                            
+                            durationMs = durationMs / speed;
+
+                            const removeId = setTimeout(() => {
+                                key.classList.remove('guide');
+                                delete key.dataset.removeTimeout;
+                            }, durationMs * 0.9); // Slightly before note ends
+                            
+                            key.dataset.removeTimeout = removeId;
+                        }
+                    });
+                }
+            }, delay);
+            activeTimeouts.push(id);
+        }
+
+        function getNotesForChord(chordName) {
+            const rootMap = {
+                'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3, 
+                'E': 4, 'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8, 'Ab': 8, 
+                'A': 9, 'A#': 10, 'Bb': 10, 'B': 11
+            };
+            
+            const match = chordName.match(/^([A-G][#b]?)(.*)$/);
+            if (!match) return [];
+            
+            const rootStr = match[1];
+            const quality = match[2];
+            
+            let rootIndex = rootMap[rootStr];
+            if (rootIndex === undefined) return [];
+            
+            let intervals = [0, 4, 7]; // Default Major
+            
+            if (quality === 'm') intervals = [0, 3, 7];
+            else if (quality === '7') intervals = [0, 4, 7, 10];
+            else if (quality === 'm7') intervals = [0, 3, 7, 10];
+            else if (quality === 'maj7') intervals = [0, 4, 7, 11];
+            else if (quality === 'dim') intervals = [0, 3, 6];
+            
+            const result = [];
+            
+            // Add Bass Note (Root at Octave 3)
+            // Note: Our piano starts at F1. C3 is well within range.
+            const bassOctave = 3;
+            const bassNoteName = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'][rootIndex % 12];
+            result.push(bassNoteName + bassOctave);
+
+            // Add Treble Notes (Octave 4)
+            const baseOctave = 4; 
+            
+            intervals.forEach(interval => {
+                let noteIndex = rootIndex + interval;
+                let octave = baseOctave + Math.floor(noteIndex / 12);
+                let noteNameIndex = noteIndex % 12;
+                let noteName = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'][noteNameIndex];
+                result.push(noteName + octave);
+            });
+            
+            return result;
+        }
+
+        // Auto load last song
+        const lastSong = localStorage.getItem('musaic_last_song');
+        if (lastSong) {
+            const songs = JSON.parse(localStorage.getItem('musaic_songs') || '{}');
+            if (songs[lastSong]) {
+                savedSongsSelect.value = lastSong;
+                loadSong();
+            }
+        }
+
+        // Auto load last rhythm
+        const lastRhythm = localStorage.getItem('musaic_last_rhythm');
+        if (lastRhythm) {
+            document.getElementById('rhythmSelect').value = lastRhythm;
+        }
+
+        // Save rhythm on change
+        document.getElementById('rhythmSelect').addEventListener('change', (e) => {
+            localStorage.setItem('musaic_last_rhythm', e.target.value);
+        });
+
+        // Initialize piano
+        createPiano();
+
+        // Start audio context on user interaction
+        document.addEventListener('click', async () => {
+            await Tone.start();
+        }, { once: true });
+
+        // Speed Control
+        document.getElementById('speedRange').addEventListener('input', (e) => {
+            const val = e.target.value;
+            document.getElementById('speedLabel').textContent = "(" + val + ")";
+            if (isPlaying) {
+                Tone.Transport.bpm.rampTo(120 * parseFloat(val), 0.1);
+            }
+        });
+    </script>
+</body>
+</html>
